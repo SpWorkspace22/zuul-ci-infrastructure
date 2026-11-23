@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: zuul-launcher
+  namespace: zuul
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: zuul-launcher
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["list", "create", "delete"]
+
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "get", "create"]
+
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["create"]
+
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["zuul-worker"]
+    verbs: ["get"]
+
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["selfsubjectaccessreviews"]
+    verbs: ["create"]
+
+  # Kubernetes does not support resourceNames restrictions for create.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles"]
+    verbs: ["create"]
+
+  # Restrict escalation and binding to Zuul's generated Role.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles"]
+    verbs: ["escalate"]
+
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles"]
+    resourceNames: ["zuul-restricted"]
+    verbs: ["bind"]
+
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zuul-launcher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: zuul-launcher
+subjects:
+  - kind: ServiceAccount
+    name: zuul-launcher
+    namespace: zuul

@@ -1,0 +1,62 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zuul-config
+  namespace: zuul
+data:
+  zuul.conf: |
+    [zookeeper]
+    hosts=zookeeper.zuul.svc.cluster.local:2281
+    tls_cert=/etc/zuul/tls/client.pem
+    tls_key=/etc/zuul/tls/clientkey.pem
+    tls_ca=/etc/zuul/tls/cacert.pem
+
+    [database]
+    dburi=postgresql://zuul:%(ZUUL_DB_PASSWORD)s@postgresql.zuul.svc.cluster.local:5432/zuul
+
+    [keystore]
+    password=%(ZUUL_KEYSTORE_PASSWORD)s
+
+    [web]
+    root=http://localhost:9000/
+    listen_address=0.0.0.0
+
+    [scheduler]
+    tenant_config=/etc/zuul/main.yaml
+
+    [executor]
+    hostname=zuul-executor.zuul.svc.cluster.local
+    finger_port=7900
+    state_dir=/var/lib/zuul
+    git_dir=/var/lib/zuul/executor-git
+    job_dir=/var/lib/zuul/builds
+    merge_jobs=false
+    trusted_rw_paths=/srv/static/logs
+
+    [connection github]
+    driver=github
+    app_id=5861143
+    app_key=/etc/zuul/github/github.pem
+    webhook_token=%(ZUUL_GITHUB_WEBHOOK_TOKEN)s
+
+    [connection opendev]
+    driver=git
+    baseurl=https://opendev.org/
+
+    [connection kubernetes]
+    driver=kubernetes
+
+  main.yaml: |
+    - tenant:
+        name: spworkspace22
+        source:
+          github:
+            config-projects:
+              - SpWorkspace22/zuul-config:
+                  load-branch: main
+            untrusted-projects:
+              - SpWorkspace22/zuul-jobs
+              - SpWorkspace22/sample-app
+
+

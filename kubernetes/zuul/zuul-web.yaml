@@ -1,0 +1,97 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zuul-web
+  namespace: zuul
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zuul-web
+  template:
+    metadata:
+      labels:
+        app: zuul-web
+    spec:
+      containers:
+        - name: zuul-web
+          image: quay.io/zuul-ci/zuul-web@sha256:4974ad32ecb60e0f57a7b5185cd9c36dbe0255d17544aa4d08f7d12ece8e8607
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+
+          env:
+            - name: ZUUL_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-runtime-secrets
+                  key: ZUUL_DB_PASSWORD
+
+            - name: ZUUL_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-runtime-secrets
+                  key: ZUUL_KEYSTORE_PASSWORD
+
+            - name: ZUUL_GITHUB_WEBHOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-github-secrets
+                  key: webhook_token
+
+          volumeMounts:
+            - name: zuul-config
+              mountPath: /etc/zuul
+              readOnly: true
+
+            - name: zookeeper-client-tls
+              mountPath: /etc/zuul/tls
+              readOnly: true
+
+            - name: github-app-key
+              mountPath: /etc/zuul/github
+              readOnly: true
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+      volumes:
+        - name: zuul-config
+          configMap:
+            name: zuul-config
+
+        - name: zookeeper-client-tls
+          secret:
+            secretName: zookeeper-client-tls
+
+        - name: github-app-key
+          secret:
+            secretName: zuul-github-secrets
+            items:
+              - key: app_key
+                path: github.pem
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-web
+  namespace: zuul
+spec:
+  type: ClusterIP
+  selector:
+    app: zuul-web
+  ports:
+    - name: http
+      port: 9000
+      targetPort: http
+      protocol: TCP

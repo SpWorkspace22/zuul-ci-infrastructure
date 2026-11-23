@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zuul-merger-data
+  namespace: zuul
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: zuul-local-storage
+  resources:
+    requests:
+      storage: 2Gi

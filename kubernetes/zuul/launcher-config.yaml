@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zuul-launcher-config
+  namespace: zuul
+data:
+  zuul.conf: |
+    [zookeeper]
+    hosts=zookeeper.zuul.svc.cluster.local:2281
+    tls_cert=/etc/zuul/tls/client.pem
+    tls_key=/etc/zuul/tls/clientkey.pem
+    tls_ca=/etc/zuul/tls/cacert.pem
+
+    [launcher]
+    connection_filter=kubernetes
+    temp_dir=/tmp
+
+    [connection kubernetes]
+    driver=kubernetes

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zuul-merger
+  namespace: zuul
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zuul-merger
+  template:
+    metadata:
+      labels:
+        app: zuul-merger
+    spec:
+      initContainers:
+        - name: prepare-merger-directories
+          image: quay.io/zuul-ci/zuul-executor@sha256:92cb81d6a076af56617c8024ac14fb4e2222bb835769b35019583679eddbcdd9
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /var/lib/zuul/merger-git
+              chmod 0777 /var/lib/zuul/merger-git
+          volumeMounts:
+            - name: merger-data
+              mountPath: /var/lib/zuul
+
+      containers:
+        - name: zuul-merger
+          image: quay.io/zuul-ci/zuul-executor@sha256:92cb81d6a076af56617c8024ac14fb4e2222bb835769b35019583679eddbcdd9
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - /usr/local/bin/zuul-merger
+            - -f
+
+          env:
+            - name: ZUUL_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-runtime-secrets
+                  key: ZUUL_DB_PASSWORD
+
+            - name: ZUUL_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-runtime-secrets
+                  key: ZUUL_KEYSTORE_PASSWORD
+
+            - name: ZUUL_GITHUB_WEBHOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-github-secrets
+                  key: webhook_token
+                  
+          volumeMounts:
+            - name: zuul-config
+              mountPath: /etc/zuul
+              readOnly: true
+
+            - name: zookeeper-client-tls
+              mountPath: /etc/zuul/tls
+              readOnly: true
+
+            - name: merger-data
+              mountPath: /var/lib/zuul
+
+            - name: github-app-key
+              mountPath: /etc/zuul/github
+              readOnly: true
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+      volumes:
+        - name: zuul-config
+          configMap:
+            name: zuul-config
+
+        - name: zookeeper-client-tls
+          secret:
+            secretName: zookeeper-client-tls
+
+        - name: merger-data
+          persistentVolumeClaim:
+            claimName: zuul-merger-data
+
+        - name: github-app-key
+          secret:
+            secretName: zuul-github-secrets
+            items:
+              - key: app_key
+                path: github.pem

@@ -1,0 +1,98 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zuul-executor
+  namespace: zuul
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zuul-executor
+  template:
+    metadata:
+      labels:
+        app: zuul-executor
+    spec:
+      hostUsers: false
+      securityContext:
+        seccompProfile:
+          type: Unconfined
+      initContainers:
+        - name: prepare-executor-directories
+          image: quay.io/zuul-ci/zuul-executor@sha256:92cb81d6a076af56617c8024ac14fb4e2222bb835769b35019583679eddbcdd9
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /var/lib/zuul/executor-git /var/lib/zuul/builds
+              chmod 0777 /var/lib/zuul/executor-git /var/lib/zuul/builds
+          volumeMounts:
+            - name: executor-data
+              mountPath: /var/lib/zuul
+      containers:
+        - name: zuul-executor
+          image: quay.io/zuul-ci/zuul-executor@sha256:92cb81d6a076af56617c8024ac14fb4e2222bb835769b35019583679eddbcdd9
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/bin/dumb-init
+            - --
+            - /usr/local/bin/zuul-executor
+          args:
+            - "-f"
+          securityContext:
+            procMount: Unmasked
+          env:
+            - name: ZUUL_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-runtime-secrets
+                  key: ZUUL_DB_PASSWORD
+            - name: ZUUL_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-runtime-secrets
+                  key: ZUUL_KEYSTORE_PASSWORD
+            - name: ZUUL_GITHUB_WEBHOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: zuul-github-secrets
+                  key: webhook_token
+          volumeMounts:
+            - name: zuul-config
+              mountPath: /etc/zuul
+              readOnly: true
+            - name: zookeeper-client-tls
+              mountPath: /etc/zuul/tls
+              readOnly: true
+            - name: executor-data
+              mountPath: /var/lib/zuul
+            - name: published-logs
+              mountPath: /srv/static/logs
+            - name: zuul-executor-ssh-key
+              mountPath: /root/.ssh
+              readOnly: true
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: zuul-config
+          configMap:
+            name: zuul-config
+        - name: zookeeper-client-tls
+          secret:
+            secretName: zookeeper-client-tls
+        - name: executor-data
+          persistentVolumeClaim:
+            claimName: zuul-executor-data
+        - name: published-logs
+          persistentVolumeClaim:
+            claimName: zuul-published-logs
+        - name: zuul-executor-ssh-key
+          secret:
+            secretName: zuul-executor-ssh-key
+            defaultMode: 256

@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: zuul
+spec:
+  serviceName: zookeeper
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: zookeeper
+          image: zookeeper:3.9.7-jre-17
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: secure-client
+              containerPort: 2281
+              protocol: TCP
+          env:
+            - name: ZOO_DATA_DIR
+              value: /data
+            - name: JVMFLAGS
+              value: >-
+                -Xms256m
+                -Xmx512m
+                -Dzookeeper.serverCnxnFactory=org.apache.zookeeper.server.NettyServerCnxnFactory
+                -Dzookeeper.ssl.keyStore.location=/etc/zookeeper/tls/keystore.pem
+                -Dzookeeper.ssl.keyStore.type=PEM
+                -Dzookeeper.ssl.trustStore.location=/etc/zookeeper/tls/truststore.pem
+                -Dzookeeper.ssl.trustStore.type=PEM
+                -Dzookeeper.ssl.clientAuth=need
+          volumeMounts:
+            - name: zookeeper-config
+              mountPath: /conf/zoo.cfg
+              subPath: zoo.cfg
+              readOnly: true
+            - name: zookeeper-data
+              mountPath: /data
+            - name: zookeeper-server-tls
+              mountPath: /etc/zookeeper/tls
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+      volumes:
+        - name: zookeeper-config
+          configMap:
+            name: zookeeper-config
+        - name: zookeeper-data
+          persistentVolumeClaim:
+            claimName: zookeeper-data
+        - name: zookeeper-server-tls
+          secret:
+            secretName: zookeeper-server-tls
+            defaultMode: 0444

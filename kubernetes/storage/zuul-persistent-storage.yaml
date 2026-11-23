@@ -1,0 +1,41 @@
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zuul
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zookeeper-data
+  namespace: zuul
+  labels:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/part-of: zuul
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: zuul-local-storage
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-data
+  namespace: zuul
+  labels:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/part-of: zuul
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: zuul-local-storage
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Gi

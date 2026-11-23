@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zuul-launcher
+  namespace: zuul
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zuul-launcher
+  template:
+    metadata:
+      labels:
+        app: zuul-launcher
+    spec:
+      serviceAccountName: zuul-launcher
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: zuul-launcher
+          image: quay.io/zuul-ci/zuul-launcher@sha256:c7c6fb71f1fdead382dca16ad61fa98cc8250ec7394a2ad8840eca8c890d501a
+          imagePullPolicy: IfNotPresent
+          command:
+            - zuul-launcher
+            - -f
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: launcher-config
+              mountPath: /etc/zuul
+              readOnly: true
+            - name: zookeeper-tls
+              mountPath: /etc/zuul/tls
+              readOnly: true
+            - name: launcher-tmp
+              mountPath: /tmp
+      volumes:
+        - name: launcher-config
+          configMap:
+            name: zuul-launcher-config
+        - name: zookeeper-tls
+          secret:
+            secretName: zookeeper-client-tls
+        - name: launcher-tmp
+          emptyDir: {}

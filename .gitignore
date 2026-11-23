@@ -1,0 +1,22 @@
+secrets/
+# Local credentials
+secret.txt
+*.pem
+kubernetes/zuul/zuul-github-secrets.yaml
+
+# Zuul executor SSH credentials
+zuul-executor-key
+zuul-executor-key.pub
+
+# Local diagnostic files
+forward.txt
+inspect.sh
+restore-kind-sysfs.sh
+
+# Kubernetes secrets and local-only manifests
+kubernetes/zuul/zuul-executor-ssh-secret.yaml
+kubernetes/zuul/zuul-bwrap-debug.yaml
+
+# Backup manifests
+kubernetes/**/*.backup
+kubernetes/**/*.pre-logserver-cleanup
